@@ -19,7 +19,7 @@ namespace Complete
                 case 0:
                     return fun();
                 case 1:
-                    return deadly(-0.05f, 1f);
+                    return deadly();
                 case 2:
                     return frightened();
                 case 3:
@@ -55,12 +55,78 @@ namespace Complete
 
         //FIRE!!!
         private Node RandomFire() {
+
             return new Action(() => Fire(UnityEngine.Random.Range(0.0f, 1.0f)));
         }
 
         private Node WeakFire(){
             return new Action(() => Fire(UnityEngine.Random.Range(0.0f, 0.5f)));
         }
+
+
+
+
+
+        private Root deadly()
+        {
+
+            /*
+        // Constantly spin and fire on the spot 
+        private Root deadly(float turn, float shoot)
+        {
+            return new Root(new Sequence(
+                        new Action(() => Turn(turn)),
+                        new Action(() => Fire(shoot))
+                    ));
+
+        }
+        */
+
+            return new Root(
+                new Service(0.2f, UpdatePerception,
+                    new Selector(
+                        new BlackboardCondition("targetOffCentre",
+                                                Operator.IS_SMALLER_OR_EQUAL, 0.1f,
+                                                Stops.IMMEDIATE_RESTART,
+
+
+                            // Stop turning and fire
+                            new Sequence(StopTurning(),
+                                        StopMove(),
+                                        new Wait(0.2f),
+                                        WeakFire())),
+
+                        new BlackboardCondition("targetDistance",
+                                                    Operator.IS_GREATER_OR_EQUAL, 10f,
+                                                    Stops.IMMEDIATE_RESTART,
+
+                            new Action(() => Move(0.5f))),
+
+
+                        new BlackboardCondition("targetOnRight",
+                                                Operator.IS_EQUAL, true,
+                                                Stops.IMMEDIATE_RESTART,
+
+
+                            // Turn right toward target
+                            new Action(() => Turn(0.7f))),
+                            // Turn left toward target
+                            new Action(() => Turn(-0.7f))
+
+
+
+
+                    )
+                )
+            );
+
+
+
+
+        }
+
+        /* Example behaviour trees */
+
 
 
 
@@ -79,14 +145,14 @@ namespace Complete
                                         StopMove(),
                                         new Wait(1f),
                                         WeakFire())),
-                    
-                        new BlackboardCondition("targetDistance", 
-                                                    Operator.IS_GREATER_OR_EQUAL, 10f,
+
+                        new BlackboardCondition("targetDistance",
+                                                    Operator.IS_GREATER_OR_EQUAL, 20f,
                                                     Stops.IMMEDIATE_RESTART,
 
                             new Action(() => Move(0.2f))),
-                          
-                            
+
+
 
                         new BlackboardCondition("targetOnRight",
                                                 Operator.IS_EQUAL, true,
@@ -98,33 +164,14 @@ namespace Complete
                             // Turn left toward target
                             new Action(() => Turn(-0.5f))
 
-
-                            
-
                     )
                 )
             );
 
-
-
-
         }
 
 
-        
 
-
-
-        /* Example behaviour trees */
-
-        // Constantly spin and fire on the spot 
-        private Root deadly(float turn, float shoot) {
-            return new Root(new Sequence(
-                        new Action(() => Turn(turn)),
-                        new Action(() => Fire(shoot))
-                    ));
-        
-    }
 
         // Turn to face your opponent and fire
         private Root frightened() {
