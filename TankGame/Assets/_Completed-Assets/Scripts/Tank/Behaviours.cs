@@ -61,6 +61,7 @@ namespace Complete
             blackboard["targetInFront"] = heading.z > 0;
             blackboard["targetOnRight"] = heading.x > 0;
             blackboard["targetOffCentre"] = Mathf.Abs(heading.x);
+
             blackboard["environmentFront"] = environmentFront();
             blackboard["envronmentLeft"] = environmentLeft();
             blackboard["envronmentLeft"] = environmentRight();
@@ -138,6 +139,20 @@ namespace Complete
 
         }
         */
+        //calculates the angle from the enemy to its target and turns toward that angle
+        private Node TurnToPlayer()
+        {
+            Vector3 targetPos = TargetTransform().position;
+            Vector3 targetDir = targetPos - transform.position;
+            float angle;
+            angle = Vector3.Angle(targetDir, transform.forward );
+            print(angle);
+
+            return new Action(() => Turn(angle));
+
+        }
+
+
 
         //TURNING!!
         private Node StopTurning()
@@ -214,6 +229,7 @@ namespace Complete
 
                                         )
                                     ),
+                
             // if the distance of the target is less that 10 meters, move forward and turn toward the player until within a certain distance.
             new BlackboardCondition("targetDistance",
                                     Operator.IS_GREATER, 10f,
@@ -222,59 +238,62 @@ namespace Complete
                                         new BlackboardCondition("targetInFront",
                                                                 Operator.IS_EQUAL, false,
                                                                 Stops.IMMEDIATE_RESTART,
-                                                                new Sequence(
-                                                                    new BlackboardCondition("targetOnRight",
-                                                                                            Operator.IS_EQUAL, false,
-                                                                                            Stops.IMMEDIATE_RESTART,
-                                                                                            new Sequence(
-                                                                                                new Action(() => Turn(-0.7f))
-                                                                                                )
-                                                
-                                                
-                                                                    ),
+                                                                new Selector(
+                                                                    //if the player is not in front of the enemy, turn until it is in front of the enemy
                                                                     new BlackboardCondition("targetOnRight",
                                                                                             Operator.IS_EQUAL, true,
                                                                                             Stops.IMMEDIATE_RESTART,
                                                                                             new Sequence(
+                                                                                                StopMove(),
                                                                                                 new Action(() => Turn(0.7f))
+                                                                                                )
+
+                                                                        ),
+                                                                    new BlackboardCondition("targetOnRight",
+                                                                                            Operator.IS_EQUAL, false,
+                                                                                            Stops.IMMEDIATE_RESTART,
+                                                                                            new Sequence(
+                                                                                                StopMove(),
+                                                                                                new Wait(0.5f),
+                                                                                                new Action(() => Turn(-0.7f))
                                                                                                 )
                                                                         )
                                                                    )
-                                        ),
-                                        StopTurning(),
-                                        new Action(() => Move(0.5f))
 
-                                       )
-            ),
-
-
-            // if the player is in the open, turn to the player and move forward until a certain range.
-            new BlackboardCondition("targetOffCentre",
-                                    Operator.IS_SMALLER_OR_EQUAL, 0.1f,
-                                    Stops.IMMEDIATE_RESTART,
-                                    new Selector(
-                                        new Sequence(
-                                            new BlackboardCondition("targetOnRight",
-                                                                    Operator.IS_EQUAL, true,
-                                                                    Stops.IMMEDIATE_RESTART,
-                                                                    new Sequence(
-                                                                        StopMove(),
-                                                                        new Action(() => Turn(0.7f))
-                                                                        )
-                                                ),
-                                            new BlackboardCondition("targetOnRight",
-                                                                    Operator.IS_EQUAL, false,
-                                                                    Stops.IMMEDIATE_RESTART,
-                                                                    new Sequence(
-                                                                        StopMove(),
-                                                                        new Action(() => Turn(0.7f))
-                                                                        )
-                                                )
+                                                                ),
+                                                                // when the targeet is in front of the enemy, turn until the enemy is direcctly facing the target.
+                                                                new BlackboardCondition("targetOffCentre",
+                                                                                        Operator.IS_SMALLER_OR_EQUAL,0.1f,
+                                                                                        Stops.IMMEDIATE_RESTART,
+                                                                                        new Sequence(
+                                                                                            StopTurning(),
+                                                                                            new Action(() => Move(0.5f))
+                                                                                            )
+                                                                    
+                                                                    )
                                             )
+                                       ),
+
+            // once the player is in  range, stop and then turn to the player.
+            //checks to see if the player is not off centre
+            new BlackboardCondition("targetOffCentre",
+                                    Operator.IS_GREATER_OR_EQUAL, 0.05f,
+                                    Stops.IMMEDIATE_RESTART,
+                                    new Selector(                                        
+                                        new BlackboardCondition("targetOnRight",
+                                                                Operator.IS_EQUAL, true,
+                                                                Stops.IMMEDIATE_RESTART,
+                                                                new Action(() => Turn(0.7f))
+                                            ),
+                                        new Action(() => Turn(-0.7f))
+
                                         )
+                                    ),
+            new Sequence(
+                StopTurning(),
+                StopMove(),
+                new Action(() => Fire(1f))
                 )
-
-
             
             
 
