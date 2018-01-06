@@ -61,14 +61,16 @@ namespace Complete
             blackboard["targetInFront"] = heading.z > 0;
             blackboard["targetOnRight"] = heading.x > 0;
             blackboard["targetOffCentre"] = Mathf.Abs(heading.x);
-            blackboard["environment"] = environment();
+            blackboard["environmentFront"] = environmentFront();
+            blackboard["envronmentLeft"] = environmentLeft();
+            blackboard["envronmentLeft"] = environmentRight();
 
             blackboard["targetOpen"] = targetOpen();
 
         }
 
 
-        //checks to see if the player(or enemy to the enemy tank) is out in the open and not hidden behind buildings
+        //checks to see if the player(or enemy to the enemy tank) is out in the open and not hidden behind buildings as well as in front of the enemy
         private bool targetOpen()
         {
             Vector3 targetPosition = new Vector3(TargetTransform().position.x, TargetTransform().position.y + 0.5f, TargetTransform().position.z + 0.88f);
@@ -87,10 +89,10 @@ namespace Complete
    
         
         //checks to see if there is any part of the environment is in front of the tank.
-        bool environment()
+        bool environmentFront()
         {
-            Vector3 block = transform.TransformDirection(Vector3.forward);
-            if(Physics.Raycast(transform.position, block, 5))
+            Vector3 forward = transform.TransformDirection(Vector3.forward);
+            if(Physics.Raycast(transform.position, forward, 10))
                 {
                 return true;
                 }
@@ -98,17 +100,44 @@ namespace Complete
             return false;
         }
 
-            
-        /*
-        public Node Patrol()
+        bool environmentLeft()
         {
-            return new Action(() =>  ));
+            Vector3 left = transform.TransformDirection(Vector3.left);
+            if (Physics.Raycast(transform.position, left, 5))
+            {
+                return true;
+            }
+
+            return false;
 
 
         }
 
-            */
 
+        bool environmentRight()
+        {
+            Vector3 right = transform.TransformDirection(Vector3.right);
+            if (Physics.Raycast(transform.position, right, 5))
+            {
+                return true;
+            }
+
+            return false;
+
+
+        }
+
+
+        //node to  move randomly until the player is in sight
+        /*
+        private Node Patrol()
+        {
+            
+            return new Action(() =>  ));
+
+
+        }
+        */
 
         //TURNING!!
         private Node StopTurning()
@@ -124,10 +153,7 @@ namespace Complete
         }
 
         //FIRE!!!
-        private Node RandomFire()
-        {
-            return new Action(() => Fire(UnityEngine.Random.Range(0.0f, 1.0f)));
-        }
+
 
         private Node WeakFire()
         {
@@ -138,90 +164,270 @@ namespace Complete
 
         private Root fun()
         {
+            return new Root(
+            new Service(0.2f, UpdatePerception,
+            new Selector(
+
+            //if there is no target in front of the enemy then: move forward
+            new BlackboardCondition("targetOpen",
+                        Operator.IS_EQUAL, false,
+                        Stops.IMMEDIATE_RESTART,
+                        new Selector(
+
+
+                            //move forward until there is part of the environment. if there is then turn right
+                            new BlackboardCondition("environmentRight",
+                                                    Operator.IS_EQUAL, true,
+                                                    Stops.IMMEDIATE_RESTART,
+                                                    new Sequence(
+                                                        StopMove(),
+                                                        new Action(() => Turn(-0.7f))
+
+                                                        )
+                                ),
+
+                            new BlackboardCondition("environmentLeft",
+                                                    Operator.IS_EQUAL, true,
+                                                    Stops.IMMEDIATE_RESTART,
+                                                    new Sequence(
+                                                        StopMove(),
+                                                        new Action(() => Turn(0.7f))
+                                                        )
+
+                                ),
+                                //need to fix when it gets stuck
+                            new BlackboardCondition("environmentFront",
+                                                    Operator.IS_EQUAL, true,
+                                                    Stops.IMMEDIATE_RESTART,
+                                                    new Sequence(
+                                                        //new Action(() => Move(-0.5f)),
+                                                        //new Wait(0.5f),
+                                                        new Action(() => Turn(0.7f)),
+                                                        new Action(() => Move(0.5f))
+                                                        )
+                                                    ),
+
+
+                            //turn left at all times until a condition is met
+                            new Action(() => Turn(-0.7f))
+
+
+                                        )
+                                    ),
+            // if the distance of the target is less that 10 meters, move forward and turn toward the player until within a certain distance.
+            new BlackboardCondition("targetDistance",
+                                    Operator.IS_GREATER, 10f,
+                                    Stops.IMMEDIATE_RESTART,
+                                    new Selector(
+                                        new BlackboardCondition("targetInFront",
+                                                                Operator.IS_EQUAL, false,
+                                                                Stops.IMMEDIATE_RESTART,
+                                                                new Sequence(
+                                                                    new BlackboardCondition("targetOnRight",
+                                                                                            Operator.IS_EQUAL, false,
+                                                                                            Stops.IMMEDIATE_RESTART,
+                                                                                            new Sequence(
+                                                                                                new Action(() => Turn(-0.7f))
+                                                                                                )
+                                                
+                                                
+                                                                    ),
+                                                                    new BlackboardCondition("targetOnRight",
+                                                                                            Operator.IS_EQUAL, true,
+                                                                                            Stops.IMMEDIATE_RESTART,
+                                                                                            new Sequence(
+                                                                                                new Action(() => Turn(0.7f))
+                                                                                                )
+                                                                        )
+                                                                   )
+                                        ),
+                                        StopTurning(),
+                                        new Action(() => Move(0.5f))
+
+                                       )
+            ),
+
+
+            // if the player is in the open, turn to the player and move forward until a certain range.
+            new BlackboardCondition("targetOffCentre",
+                                    Operator.IS_SMALLER_OR_EQUAL, 0.1f,
+                                    Stops.IMMEDIATE_RESTART,
+                                    new Selector(
+                                        new Sequence(
+                                            new BlackboardCondition("targetOnRight",
+                                                                    Operator.IS_EQUAL, true,
+                                                                    Stops.IMMEDIATE_RESTART,
+                                                                    new Sequence(
+                                                                        StopMove(),
+                                                                        new Action(() => Turn(0.7f))
+                                                                        )
+                                                ),
+                                            new BlackboardCondition("targetOnRight",
+                                                                    Operator.IS_EQUAL, false,
+                                                                    Stops.IMMEDIATE_RESTART,
+                                                                    new Sequence(
+                                                                        StopMove(),
+                                                                        new Action(() => Turn(0.7f))
+                                                                        )
+                                                )
+                                            )
+                                        )
+                )
+
+
+            
+            
+
+
+
+                    )
+                )
+            );
+        }
+
+
+
+
+        /*
+
+        private Root fun()
+        {
 
             // add the AI dodging player shells
             return new Root(
                 new Service(0.2f, UpdatePerception,
                     new Selector(
 
-                        // when the target is in front of the AI, the Ai stops moving and turning and shoots
-                        new BlackboardCondition("targetOffCentre",
-                                                Operator.IS_SMALLER_OR_EQUAL, 0.1f,
-                                                Stops.IMMEDIATE_RESTART,
-                            // Stop turning and fire
-                            new Sequence(
-                                        StopTurning(),
-                                        StopMove(),
-                                        new Action(() => Fire(0.5f)))
-                                        ),
 
-
-                        new BlackboardCondition("targetDistance",
-                                                    Operator.IS_GREATER_OR_EQUAL, 10f,
-                                                    Stops.IMMEDIATE_RESTART,
-                                                    new Selector(
-                            // if the AI reaches a building or part of the envvironment it stops then turns right and then proceeds forward
-                        new BlackboardCondition("environment",
-                                                Operator.IS_EQUAL, true,
-                                                Stops.IMMEDIATE_RESTART,
-
-                                                new Sequence(
-                                                new Action(() => Turn(0.7f)),
-                                                new Action(() => Move(0.7f))
-                                                         )
-                                                      )
-                                                 )
-                                                ),
-
-                        
-
+                        //checks to see if the player is not bbehind the environment by using raycasting.
                         new BlackboardCondition("targetOpen",
                         Operator.IS_EQUAL, true,
                         Stops.IMMEDIATE_RESTART,
-                        //it runs the children sequentially until it succeeds, but also runs it til it fails, if it succeeds to turn right, dont turn left, if it fails to turn right then turn right
-                        new Sequence(
-                                    new Selector(
-                                 //if the target is in fron =t of the AI, it moves forward
+                        //it runs the children sequentially until it succeeds, but also runs it til it fails, if it succeeds to turn right, dont turn left, if it fails to turn right then turn left
+                        new Sequence(                                    
+                            new Selector(
+
+                                                //if the target is in front of the AI, it moves forward
                                                 new BlackboardCondition("targetInFront",
                                                             Operator.IS_EQUAL, true,
                                                             Stops.IMMEDIATE_RESTART,
-                                                            new Action(() => Move(0.5f))),
+                                                            new Action(() => Move(0.5f))
+                                                            ),                                                    
 
 
 
-                                    // of the target is on the right of the AI, it turns right
+                                                // of the target is on the right of the AI, it turns right
                                                 new BlackboardCondition("targetOnRight",
                                                                         Operator.IS_EQUAL, true,
                                                                      Stops.IMMEDIATE_RESTART,
-                                                       
-                                    // Turn right toward target
-                                               new Action(() => Turn(0.7f))),
 
-                                    // of the target is on the right of the AI, it turns right
+                                                                     new Sequence(
+                                               // Turn right toward target
+                                               StopMove(),
+                                               new Action(() => Turn(0.7f))
+                                                    )
+                                               ),
+
+
+                                               // when the target is in front of the AI, the Ai stops moving and turning and shoots
+                                               new BlackboardCondition("targetOffCentre",
+                                                    Operator.IS_SMALLER_OR_EQUAL, 0.1f,
+                                                    Stops.IMMEDIATE_RESTART,
+                                                    // Stop turning and fire
+                                                    new Sequence(
+                                                                StopTurning(),
+                                                                StopMove(),
+                                                                //new Action(() => Fire(0.5f)),
+                                                                new Wait(2f),
+
+
+                                                // of the target is on the right of the AI, it turns right
                                                 new BlackboardCondition("targetOnRight",
                                                                         Operator.IS_EQUAL, false,
                                                                      Stops.IMMEDIATE_RESTART,
                                                // Turn right toward target
                                                new Action(() => Turn(-0.7f))),
 
-                                                
                                                 StopMove()
 
+                                            )
                                          )
+
+                                                    /*
+                                                    new BlackboardCondition("targetDistance",
+                                                    Operator.IS_SMALLER, 10f,
+                                                    Stops.IMMEDIATE_RESTART,
+                                                    new Sequence(
+                                                    
+                                                    
+
+                                                                )
+                                                            )
+                                                        
+                                                    )
+
+                                 )
+                            ),
+
+                                                    
+                            new Sequence(
+                        //if the target is 20 meters or more from the player it checks to see if the environment blavkboard is true
+                        new BlackboardCondition("targetDistance",
+                                                    Operator.IS_GREATER_OR_EQUAL, 10f,
+                                                    Stops.IMMEDIATE_RESTART,
+                                                    new Selector(
+                        // if the AI reaches a building or part of the envvironment it stops then turns right and then proceeds forward
+                        
+                        new BlackboardCondition("environmentLeft",
+                                               Operator.IS_EQUAL, true,
+                                               Stops.IMMEDIATE_RESTART,
+
+                                               new Sequence(
+                                               new Action(() => Turn(0.7f)),
+                                               new Wait(0.2f),
+                                               new Action(() => Turn(-0.7f)),
+                                               new Action(() => Move(0.7f))
+
+                                                        )
+                                                     ),
+                                                    
+                        new BlackboardCondition("environmentRight",
+                                               Operator.IS_EQUAL, true,
+                                               Stops.IMMEDIATE_RESTART,
+
+                                               new Sequence(
+                                               new Action(() => Turn(-0.7f)),
+                                               new Wait(0.2f),
+                                               new Action(() => Turn(0.7f)),
+                                               new Action(() => Move(0.7f))
+
+                                                        )
+                                                     ), 
+                                                     
+                        new BlackboardCondition("environmentFront",
+                                                Operator.IS_EQUAL, true,
+                                                Stops.IMMEDIATE_RESTART,
+
+                                                new Sequence(
+                                                new Action(() => Turn(0.7f)),
+                                                new Wait(0.2f),
+                                                new Action(() => Move(0.7f))
+
+                                                                  )
+                                                            )
+                                                         )
+                                                    )
+                                                )
+      
                                     )
                                 )
                                 
-            
-
-
-                             )                        
-                        )
-                   );
+                            );
 
 
         }
-
-
+        
+    */
 
 
 
@@ -323,7 +529,7 @@ namespace Complete
 
                             // if the AI reaches a building or part of the envvironment it stops then turns right and then proceeds forward
 
-                            new BlackboardCondition("environment",
+                            new BlackboardCondition("environmentFront",
                                                     Operator.IS_EQUAL, true,
                                                     Stops.IMMEDIATE_RESTART,
 
