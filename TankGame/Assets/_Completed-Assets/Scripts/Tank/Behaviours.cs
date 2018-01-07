@@ -191,12 +191,11 @@ namespace Complete
 
 
                             //move forward until there is part of the environment. if there is then turn right
-                            new BlackboardCondition("environmentRight",
+                            /*new BlackboardCondition("environmentRight",
                                                     Operator.IS_EQUAL, true,
                                                     Stops.IMMEDIATE_RESTART,
                                                     new Sequence(
-                                                        StopMove(),
-                                                        new Action(() => Turn(-0.7f))
+                                                        new Action(() => Move(0.5f))
 
                                                         )
                                 ),
@@ -205,30 +204,51 @@ namespace Complete
                                                     Operator.IS_EQUAL, true,
                                                     Stops.IMMEDIATE_RESTART,
                                                     new Sequence(
-                                                        StopMove(),
-                                                        new Action(() => Turn(0.7f))
+                                                        new Action(() => Move(0.5f))
                                                         )
 
                                 ),
+                                */
                                 //need to fix when it gets stuck
                             new BlackboardCondition("environmentFront",
                                                     Operator.IS_EQUAL, true,
                                                     Stops.IMMEDIATE_RESTART,
-                                                    new Sequence(
-                                                        //new Action(() => Move(-0.5f)),
-                                                        //new Wait(0.5f),
-                                                        new Action(() => Turn(0.7f)),
-                                                        new Action(() => Move(0.5f))
-                                                        )
-                                                    ),
-
-
+                                                    new Selector(
+                                                        new BlackboardCondition("environmentRight",
+                                                                                Operator.IS_EQUAL, true,
+                                                                                Stops.IMMEDIATE_RESTART,
+                                                                                new Sequence(
+                                                                                    StopMove(),
+                                                                                    new Action(() => Turn(-0.7f))
+                                                                                    )
+                                                            ),
+                                                        new BlackboardCondition("environmentLeft",
+                                                                                Operator.IS_EQUAL,true,
+                                                                                Stops.IMMEDIATE_RESTART,
+                                                                                new Sequence(
+                                                                                    StopMove(),
+                                                                                    new Action(() => Turn(0.7f))
+                                                                                    )
+                                                            
+                                                            ),
+                                                        new Sequence(
+                                                            new Action(() => Move(-0.5f)),
+//                                                            new Wait(0.5f),
+                                                            new Action(() => Turn(0.7f))
+                                                            )
+                                                    )
+                                ),
+                            new Sequence(
+                                StopTurning(),
+                                new Action(() => Move(0.5f))
+                                )
                             //turn left at all times until a condition is met
-                            new Action(() => Turn(-0.7f))
+                            //new Action(() => Turn(-0.7f))
 
 
-                                        )
-                                    ),
+                                        
+                        )
+                ),
                 
             // if the distance of the target is less that 10 meters, move forward and turn toward the player until within a certain distance.
             new BlackboardCondition("targetDistance",
