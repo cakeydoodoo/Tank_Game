@@ -75,7 +75,6 @@ namespace Complete
         {
             Vector3 targetPosition = new Vector3(TargetTransform().position.x, TargetTransform().position.y + 0.5f, TargetTransform().position.z + 0.88f);
             RaycastHit hit;
-           // Debug.DrawRay(currentPosition, targetPosition - currentPosition, Color.cyan);
             if(Physics.SphereCast(transform.position, 0.5f,  targetPosition - transform.position, out hit))
             {
                 //the spherecast will hit anything with a collider but will return true if it hits anything with the name tank.
@@ -181,6 +180,8 @@ namespace Complete
             return new Action(() => Fire(Force()));
         }
 
+        //Selector - keeps running even if it fails, until it succeeds
+        //sequence - if it succeeds keep running, until it fails.
 
         private Root fun()
         {
@@ -239,9 +240,9 @@ namespace Complete
                         )
                 ),
                 
-            // if the distance of the target is less that 10 meters, move forward and turn toward the player until within a certain distance.
+            // if the distance of the target is more than 35, move forward and turn toward the player until within a certain distance.
             new BlackboardCondition("targetDistance",
-                                    Operator.IS_GREATER, 37f,
+                                    Operator.IS_GREATER, 30f,
                                     Stops.IMMEDIATE_RESTART,
                                     new Selector(
                                         new BlackboardCondition("targetInFront",
@@ -282,6 +283,11 @@ namespace Complete
                                                                     )
                                             )
                                        ),
+            new BlackboardCondition("targetDistance",
+                                    Operator.IS_SMALLER, 10f,
+                                    Stops.IMMEDIATE_RESTART,
+                                    new Action(() => Move(-0.5f))
+                ),
 
             // once the player is in  range, stop and then turn to the player.
             //checks to see if the player is not off centre
@@ -298,16 +304,13 @@ namespace Complete
 
                                         )
                                     ),
+          
             new Sequence(
                 StopTurning(),
                 StopMove(),
                 accurateFire()
 //                new Action(() => Fire(0.25f))
                 )
-            
-            
-
-
 
                     )
                 )
@@ -557,7 +560,7 @@ namespace Complete
                                                 StopMove()
 
                                             )
-                                         ),
+                                         ), 
 
                                                     new BlackboardCondition("targetDistance",
                                                     Operator.IS_SMALLER, 10f,
